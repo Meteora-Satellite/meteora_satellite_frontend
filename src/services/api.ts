@@ -1,3 +1,7 @@
+import { toast } from 'vue-sonner';
+
+import { useAuthStore } from '@/stores/auth';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://mtsat.xyz';
 
 // Auth Types
@@ -149,6 +153,40 @@ export interface ClosePositionResponse {
   data: Position
 }
 
+export interface LogoutResponse {
+  ok: boolean
+}
+
+export interface Notification {
+  id: string,
+  type: 'rebalance' | 'feeClaim' | 'closePosition',
+  title: string,
+  body: string,
+  createdAt: string,
+  isRead: boolean
+}
+
+export interface GetNotificationsResponse {
+  ok: boolean,
+  data: {
+    items: Notification[],
+    total: number
+  }
+}
+
+export interface ReadNotificationsResponse {
+  ok: boolean
+}
+
+export interface ReadAllNotificationsResponse {
+  ok: boolean
+}
+
+export interface GetPrivateKeyResponse {
+  ok: boolean,
+  data: string
+}
+
 class APIClient {
   private baseURL: string;
   private accessToken: string | null = null;
@@ -163,11 +201,13 @@ class APIClient {
     this.refreshToken = localStorage.getItem('refresh_token');
   }
 
-  setTokens(access: string, refresh: string) {
+  setTokens(access: string, refresh?: string) {
     this.accessToken = access;
-    this.refreshToken = refresh;
     localStorage.setItem('access_token', access);
-    localStorage.setItem('refresh_token', refresh);
+    if (refresh) {
+      this.refreshToken = refresh;
+      localStorage.setItem('refresh_token', refresh);
+    }
   }
 
   clearTokens() {
@@ -187,18 +227,20 @@ class APIClient {
     this.refreshInProgress = true;
     this.refreshPromise = (async () => {
       try {
-        const response = await fetch(`${this.baseURL}/auth/refresh`, {
+        const response:any = await this.request('/auth/refresh', {
           method: 'POST',
-          credentials: 'include', // отправит HttpOnly куку с refresh токеном
+          body: JSON.stringify({ refresh: this.refreshToken }),
         });
 
         if (!response.ok) throw new Error('Refresh failed');
-        const data = await response.json();
+        const data = response.data;
 
-        if (!data?.accessToken) throw new Error('No new access token');
-        this.setTokens(data.accessToken);
+        if (!data?.access) throw new Error('No new access token');
+        this.setTokens(data.access);
       } catch (err) {
-        this.clearTokens();
+        useAuthStore().signOut();
+        // this.clearTokens();
+        toast.error('Your session is expired');
         throw err;
       } finally {
         this.refreshInProgress = false;
@@ -212,6 +254,7 @@ class APIClient {
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
+    retried = false,
   ): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -225,8 +268,17 @@ class APIClient {
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       ...options,
       headers,
-      credentials: 'include',
     });
+
+    if (response.status === 401 && !retried && !endpoint.includes('/auth/refresh')) {
+      try {
+        await this.refreshTokenFn();
+        return this.request<T>(endpoint, options, true);
+      } catch {
+        this.clearTokens();
+        throw new Error('Session expired. Please log in again.');
+      }
+    }
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ ok: false, error: 'Unknown error' }));
@@ -258,6 +310,13 @@ class APIClient {
     return this.request<NonceResponse>('/auth/nonce', {
       method: 'POST',
       body: JSON.stringify({ address } as NonceRequest),
+    });
+  }
+
+  async logout(): Promise<LogoutResponse> {
+    return this.request<LogoutResponse>('/auth/logout', {
+      method: 'POST',
+      body: JSON.stringify({ refresh: this.refreshToken }),
     });
   }
 
@@ -329,6 +388,30 @@ class APIClient {
   async removeLiquidity(positionId: string, percentage: number): Promise<RemoveLiquidityResponse> {
     return this.request<RemoveLiquidityResponse>(`/positions/${positionId}/liquidity?percentage=${percentage}`, {
       method: 'DELETE',
+    });
+  }
+
+  async getNotifications(page: number, limit: number) : Promise<GetNotificationsResponse> {
+    return this.request<GetNotificationsResponse>(`/notifications?page=${page}&limit=${limit}`, {
+      method: 'GET',
+    });
+  }
+
+  async readNotification(id: Notification['id']) : Promise<ReadNotificationsResponse> {
+    return this.request<ReadAllNotificationsResponse>(`/notifications/${id}/read`, {
+      method: 'POST',
+    });
+  }
+
+  async readAllNotifications() : Promise<ReadAllNotificationsResponse> {
+    return this.request<ReadAllNotificationsResponse>('/notifications/read-all', {
+      method: 'POST',
+    });
+  }
+
+  async getPrivateKey(): Promise<GetPrivateKeyResponse> {
+    return this.request<GetPrivateKeyResponse>('/wallets/private-key', {
+      method: 'GET',
     });
   }
 }

@@ -25,6 +25,7 @@
     "@vueuse/core": "^13.9.0",
     "axios": "^1.12.2",
     "bs58": "^6.0.0",
+    "firebase": "^12.4.0",
     "lucide-vue-next": "^0.545.0",
     "motion-v": "^1.7.2",
     "pinia": "^3.0.3",
@@ -36,6 +37,7 @@
     "vue": "^3.5.22",
     "vue-router": "^4.5.1",
     "vue-sonner": "^2.0.9",
+    "vuefire": "^3.2.2",
     "zod": "^4.1.12"
   },
   "devDependencies": {

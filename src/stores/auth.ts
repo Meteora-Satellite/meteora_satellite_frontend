@@ -2,11 +2,13 @@ import type { PublicKey } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { apiClient } from '@/services/api';
 import { usePositionsStore } from '@/stores/positions';
 
 export const useAuthStore = defineStore('auth', () => {
+  const router = useRouter();
   const publicKey = ref<PublicKey | null>(null);
   const authenticated = ref(false);
   const signedMessage = ref<string | null>(null);
@@ -70,17 +72,25 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // Выход из системы
-  function signOut() {
-    publicKey.value = null;
-    authenticated.value = false;
-    signedMessage.value = null;
-    signature.value = null;
-    internalWallet.value = null;
-    apiClient.clearTokens();
+  async function signOut() {
+    try {
+      await apiClient.logout();
+      publicKey.value = null;
+      authenticated.value = false;
+      signedMessage.value = null;
+      signature.value = null;
+      internalWallet.value = null;
+      apiClient.clearTokens();
+      router.push('/login');
 
-    // Clear positions on logout
-    const positionsStore = usePositionsStore();
-    positionsStore.clearPositions();
+      // Clear positions on logout
+      const positionsStore = usePositionsStore();
+      positionsStore.clearPositions();
+      router.push('/login');
+    } catch (err) {
+      console.log('Logout error', err);
+      throw new Error('Logout error');
+    }
   }
 
   const internalWallet = ref<any>(null);

@@ -25,8 +25,11 @@ import PositionManagement from '@/components/positions/PositionManagement.vue';
 import PositionCard from '@/components/positions/PositionCard.vue';
 import { apiClient, type Position } from '@/services/api';
 import { getPoolInformation } from '@/services/meteora';
+import NotificationsSidebar from '@/components/NotificationsSidebar.vue';
+import { useNotifications } from '@/composables/useNotifications';
+import { Bell, BellDot } from 'lucide-vue-next';
+import PrivateKey from '@/components/Modals/PrivateKey.vue';
 
-const router = useRouter();
 const authStore = useAuthStore();
 const poolsStore = usePoolsStore();
 const positionsStore = usePositionsStore();
@@ -191,8 +194,7 @@ function handleLogout() {
     balanceRefreshInterval = null;
   }
   authStore.signOut();
-  router.push('/login');
-}
+};
 
 // Handle config (placeholder)
 function handleConfig() {
@@ -298,10 +300,20 @@ async function loadPoolNames() {
     }
   }
 }
+const showNotifications = ref<boolean>(false)
+const showPrivateKeyModal = ref<boolean>(false)
 </script>
 
 <template>
   <div class="h-full w-full flex flex-col relative">
+    <NotificationsSidebar
+      :open="showNotifications"
+    />
+    <PrivateKey
+      v-if="showPrivateKeyModal"
+      :open="true"
+      @update:open="(val:boolean) => showPrivateKeyModal = val"
+    />
 
     <div class="header relative w-full px-4 py-4 lg:px-8">
       <!-- Mobile: Two rows (logo/wallet, then input) -->
@@ -368,6 +380,9 @@ async function loadPoolNames() {
               <DropdownMenuItem @click="handleConfig">
                 <span>Config</span>
               </DropdownMenuItem>
+              <DropdownMenuItem @click="showPrivateKeyModal = true">
+                <span>Get Private Key</span>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem class="text-red-500" @click="handleLogout">
                 <span>Logout</span>
@@ -384,7 +399,7 @@ async function loadPoolNames() {
         />
 
         <!-- Input field (full width on mobile, centered with max-width on desktop) -->
-        <Card class="!p-4 lg:w-[800px]">
+        <Card class="!p-4 lg:w-[800px] ml-auto mr-auto">
           <div class="space-y-2">
             <label class="text-sm font-medium text-muted-foreground">
               <span class="hidden lg:inline">Enter Meteora DLMM URL or Pool ID</span>
@@ -461,12 +476,21 @@ async function loadPoolNames() {
             <DropdownMenuItem @click="handleConfig">
               <span>Config</span>
             </DropdownMenuItem>
+            <DropdownMenuItem @click="showPrivateKeyModal = true">
+              <span>Get Private Key</span>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem class="text-red-500" @click="handleLogout">
               <span>Logout</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <Button
+          class="h-[46px] w-[46px] flex align-center justify-center rounded-full bg-card text-card-foreground flex-col gap-4 rounded-xl border shadow-sm hidden lg:block w-fit cursor-pointer hover:bg-accent transition-colors shrink-0"
+          @click="useNotifications().toggleOpen()"
+        >
+          <component :is="useNotifications().unreadNotifications.value ? BellDot : Bell" :color="useNotifications().unreadNotifications.value ? '#c18aff' : '#fff'" />
+        </Button>
       </div>
     </div>
 
