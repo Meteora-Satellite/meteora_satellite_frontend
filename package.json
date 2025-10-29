@@ -37,7 +37,6 @@
     "vue": "^3.5.22",
     "vue-router": "^4.5.1",
     "vue-sonner": "^2.0.9",
-    "vuefire": "^3.2.2",
     "zod": "^4.1.12"
   },
   "devDependencies": {

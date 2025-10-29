@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroupIndicator, RadioGroupItem, RadioGroupRoot } from 'reka-ui';
 
 interface PoolInfo {
   name: string;
@@ -41,6 +42,8 @@ const autoTakeFees = ref(false);
 const feesInterval = ref(1);
 const feeMode = ref<'simple' | 'sellIntoSol' | 'reinvest'>('simple');
 const feesReinvestStrategy = ref<'SPOT' | 'CURVE' | 'BIDASK' | ''>('');
+
+const rebalanceType = ref<'standart' | 'simple'>('standart');
 
 // Extract token name from pool name (e.g., "USELESS-SOL" → "USELESS")
 const tokenName = computed(() => {
@@ -97,6 +100,7 @@ const formSchema = computed(() => {
     feesInterval: z.number().min(1, 'Minimum interval is 1 minute').optional(),
     feeMode: z.enum(['simple', 'sellIntoSol', 'reinvest']),
     feesReinvestStrategy: z.enum(['SPOT', 'CURVE', 'BIDASK']).optional(),
+    rebalanceType: z.enum(['standart', 'simple']).optional()
   });
 });
 
@@ -120,6 +124,7 @@ function handleSubmit(e: Event) {
     feesInterval: feesInterval.value,
     feeMode: feeMode.value,
     feesReinvestStrategy: feesReinvestStrategy.value || undefined,
+    rebalanceType: rebalanceType.value
   };
 
   // Validate
@@ -157,6 +162,7 @@ function handleSubmit(e: Event) {
       strategy: mapStrategyToBackend(result.data.rebalanceStrategy),
       stopRebalanceMinimumPrice: result.data.stopRebalanceMinPrice?.toString(),
       stopRebalanceMaximumPrice: result.data.stopRebalanceMaxPrice?.toString(),
+      type: result.data.rebalanceType?.toString()
     };
   }
 
@@ -284,19 +290,67 @@ defineExpose({
         <!-- Rebalance Config Fields (shown when autoRebalance is true) -->
         <div v-if="autoRebalance" class="ml-6 space-y-4 border-l-2 border-zinc-700 pl-4">
           <div class="space-y-2">
-            <label class="text-sm font-medium">Rebalance Strategy</label>
-            <Select v-model="rebalanceStrategy">
-              <SelectTrigger>
-                <SelectValue placeholder="Select strategy" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="SPOT">SPOT</SelectItem>
-                  <SelectItem value="CURVE">CURVE</SelectItem>
-                  <SelectItem value="BIDASK">BIDASK</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <div class="flex items-start">
+              <div class="mr-5">
+                <label class="text-sm font-medium">Rebalance Strategy</label>
+                <Select v-model="rebalanceStrategy">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select strategy" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="SPOT">SPOT</SelectItem>
+                      <SelectItem value="CURVE">CURVE</SelectItem>
+                      <SelectItem value="BIDASK">BIDASK</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label class="text-sm font-medium mb-5">Rebalance Type</label>
+                <RadioGroupRoot
+                  v-model="rebalanceType"
+                  class="flex mt-2 gap-4.5"
+                  default-value="default"
+                  aria-label="View density"
+                >
+                  <div class="flex items-center">
+                    <RadioGroupItem
+                      id="r1"
+                      class="bg-white w-[1.125rem] h-[1.125rem] rounded-full border data-[active=true]:border-stone-700 data-[active=true]:bg-stone-700 dark:data-[active=true]:bg-white shadow-sm focus:shadow-[0_0_0_2px] focus:shadow-stone-700 outline-none cursor-default"
+                      value="standart"
+                    >
+                      <RadioGroupIndicator
+                        class="flex items-center justify-center w-full h-full relative after:content-[''] after:block after:w-2 after:h-2 after:rounded-[50%] after:bg-white dark:after:bg-stone-700"
+                      />
+                    </RadioGroupItem>
+                    <label
+                      class="text-stone-700 dark:text-white text-sm leading-none pl-[5px]"
+                      for="r1"
+                    >
+                      Standard(reopen)
+                    </label>
+                  </div>
+                  <div class="flex items-center">
+                    <RadioGroupItem
+                      id="r2"
+                      class="bg-white w-[1.125rem] h-[1.125rem] rounded-full border data-[active=true]:border-stone-700 data-[active=true]:bg-stone-700 dark:data-[active=true]:bg-white shadow-sm focus:shadow-[0_0_0_2px] focus:shadow-stone-700 outline-none cursor-default"
+                      value="simple"
+                    >
+                      <RadioGroupIndicator
+                        class="flex items-center justify-center w-full h-full relative after:content-[''] after:block after:w-2 after:h-2 after:rounded-[50%] after:bg-white dark:after:bg-stone-700"
+                      />
+                    </RadioGroupItem>
+                    <label
+                      class="text-stone-700 dark:text-white text-sm leading-none pl-[5px]"
+                      for="r2"
+                    >
+                      Simple(no swap)
+                    </label>
+                  </div>
+                </RadioGroupRoot>
+              </div>
+            </div>
             <p v-if="errors.rebalanceStrategy" class="text-sm text-red-500">{{ errors.rebalanceStrategy }}</p>
           </div>
 

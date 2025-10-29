@@ -5,6 +5,49 @@ import PatternBackground from './components/ui/pattern-background/PatternBackgro
 import { Toaster } from '@/components/ui/sonner';
 
 import 'vue-sonner/style.css';
+
+import { onMounted } from 'vue';
+import { messaging, getToken, onMessage } from '../firebase';
+import { toast } from 'vue-sonner';
+import { useNotifications } from './composables/useNotifications';
+import type { Notification } from './services/api';
+
+const vapidKey = import.meta.env.VITE_FCM_VAPID_KEY;
+
+onMounted(async () => {
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      const token = await getToken(messaging, { vapidKey });
+      console.log('FCM Token:', token);
+    } else {
+      toast.error('You have blocked notifications');
+    }
+    onMessage(messaging, (payload) => {
+      console.log(payload);
+      const newNotif:Notification = {
+        title: payload.notification?.title ?? '',
+        body: payload.notification?.body ?? '',
+        id: '',
+        createdAt: '',
+        type: 'closePosition',
+        isRead: false
+        
+      }
+      toast.info(newNotif.title, {
+        description: newNotif.body,
+        action: {
+          label: 'Open',
+          onClick: () => useNotifications().toggleOpen()
+        }
+      });
+      useNotifications().addNotification(newNotif);
+    });
+  } catch (err) {
+    console.error('Ошибка при инициализации FCM:', err);
+  }
+});
+
 </script>
 
 <template>

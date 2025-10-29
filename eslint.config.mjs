@@ -9,6 +9,9 @@ import vueParser from 'vue-eslint-parser';
 export default [
   // Base configuration for all JavaScript/Vue files
   {
+    globals: {
+      RequestInit: true,
+    },
     files: ['**/*.{js,cjs,mjs,ts}'],
     plugins: {
       'import-x': importX,
