@@ -43,7 +43,7 @@ const feesInterval = ref(1);
 const feeMode = ref<'simple' | 'sellIntoSol' | 'reinvest'>('simple');
 const feesReinvestStrategy = ref<'SPOT' | 'CURVE' | 'BIDASK' | ''>('');
 
-const rebalanceType = ref<'standart' | 'simple'>('standart');
+const rebalanceType = ref<'standard' | 'simple'>('standard');
 
 // Extract token name from pool name (e.g., "USELESS-SOL" → "USELESS")
 const tokenName = computed(() => {
@@ -100,7 +100,7 @@ const formSchema = computed(() => {
     feesInterval: z.number().min(1, 'Minimum interval is 1 minute').optional(),
     feeMode: z.enum(['simple', 'sellIntoSol', 'reinvest']),
     feesReinvestStrategy: z.enum(['SPOT', 'CURVE', 'BIDASK']).optional(),
-    rebalanceType: z.enum(['standart', 'simple']).optional()
+    rebalanceType: z.enum(['standard', 'simple']).optional()
   });
 });
 
@@ -318,7 +318,7 @@ defineExpose({
                     <RadioGroupItem
                       id="r1"
                       class="bg-white w-[1.125rem] h-[1.125rem] rounded-full border data-[active=true]:border-stone-700 data-[active=true]:bg-stone-700 dark:data-[active=true]:bg-white shadow-sm focus:shadow-[0_0_0_2px] focus:shadow-stone-700 outline-none cursor-default"
-                      value="standart"
+                      value="standard"
                     >
                       <RadioGroupIndicator
                         class="flex items-center justify-center w-full h-full relative after:content-[''] after:block after:w-2 after:h-2 after:rounded-[50%] after:bg-white dark:after:bg-stone-700"
