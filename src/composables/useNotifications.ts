@@ -1,8 +1,9 @@
 import { computed, ref } from 'vue';
 
-import { apiClient, type Notification } from '@/services/api';
+import { apiClient } from '@/services/api';
+import type { NotificationDTO } from '@/api';
 
-const notifications = ref<Notification[]>([]);
+const notifications = ref<NotificationDTO[]>([]);
 const isOpen = ref<boolean>(false);
 
 const total = ref<number>(0);
@@ -12,7 +13,10 @@ export function useNotifications() {
   const getNotifications = async (page: number, loadMore: boolean = false) => {
     const limit: number = 5;
     try {
-      const { data } = (await apiClient.getNotifications(page, limit));
+      const { data } = (await apiClient.openApi.notifications.notificationsGet({
+        page: page,
+        limit: limit
+      }));
       total.value = data.total;
       if (loadMore) {
         notifications.value.push(...data.items);
@@ -29,14 +33,14 @@ export function useNotifications() {
   });
 
 
-  const addNotification = (notification: Notification) => {
+  const addNotification = (notification: NotificationDTO) => {
     notifications.value.unshift(notification);
     console.log(notifications.value);
   };
 
-  const markAsRead = async (id: Notification['id']) => {
+  const markAsRead = async (id: NotificationDTO['id']) => {
     try {
-      await apiClient.readNotification(id);
+      await apiClient.openApi.notifications.notificationsNotificationIdReadPost({notificationId: id});
       const n = notifications.value.find(n => n.id === id);
       if (n) n.isRead = true;
     } catch (err) {

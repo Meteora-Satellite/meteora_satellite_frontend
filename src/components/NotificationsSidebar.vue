@@ -6,7 +6,15 @@ import Button from './ui/button/Button.vue';
 import { toast } from 'vue-sonner';
 import { apiClient } from '@/services/api';
 
-const { notifications, isOpen, toggleOpen, markAsRead, getNotifications, total, unreadNotifications } = useNotifications()
+const {
+  notifications,
+  isOpen,
+  toggleOpen,
+  markAsRead,
+  getNotifications,
+  total,
+  unreadNotifications
+} = useNotifications()
 const page = ref<number>(1);
 onMounted(() => {
   getNotifications(page.value);
@@ -14,7 +22,7 @@ onMounted(() => {
 
 const readAll = async () => {
   try {
-    await apiClient.readAllNotifications()
+    await apiClient.openApi.notifications.notificationsReadAllPost()
     notifications.value.forEach((n) => n.isRead = true)
   } catch (err) {
     console.log(err);

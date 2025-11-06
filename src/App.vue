@@ -10,7 +10,9 @@ import { onMounted } from 'vue';
 import { messaging, getToken, onMessage } from '../firebase';
 import { toast } from 'vue-sonner';
 import { useNotifications } from './composables/useNotifications';
-import type { Notification } from './services/api';
+import Header from './components/Header.vue';
+import { useAuthStore } from './stores/auth';
+import type { NotificationDTO } from './api';
 
 const vapidKey = import.meta.env.VITE_FCM_VAPID_KEY;
 
@@ -24,12 +26,12 @@ onMounted(async () => {
       toast.error('You have blocked notifications');
     }
     onMessage(messaging, (payload) => {
-      console.log(payload);
-      const newNotif:Notification = {
+      const newNotif:NotificationDTO = {
         title: payload.notification?.title ?? '',
         body: payload.notification?.body ?? '',
         id: '',
-        createdAt: '',
+        createdAt: new Date(),
+        data: {},
         type: 'closePosition',
         isRead: false
         
@@ -58,6 +60,9 @@ onMounted(async () => {
     :speed="PATTERN_BACKGROUND_SPEED.Slow"
     animate
   >
+    <Header
+      v-if="useAuthStore().authenticated === true"
+    />
     <RouterView />
     <Toaster />
   </PatternBackground>

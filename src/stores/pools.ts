@@ -6,6 +6,16 @@ import { getPoolInformation } from '@/services/meteora';
 
 export const usePoolsStore = defineStore('pools', () => {
   const selectedPoolInfo = ref<any>();
+  const selectedPoolId = ref<string | null>(null)
+
+  const urlInput = ref<string | null>(null)
+
+  const selPoolId = (val: string | null) => {
+    selectedPoolId.value = val
+  }
+  const setUrlInput = (val: string | null) => {
+    urlInput.value = val
+  }
   // const selectedPoolInfo = ref<any>({
   //   address: "8ztFxjFPfVUtEf4SLSapcFj8GW2dxyUA9no2bLPq7H7V",
   //   name: "USELESS-SOL",
@@ -77,5 +87,9 @@ export const usePoolsStore = defineStore('pools', () => {
   return {
     selectedPoolInfo,
     getSelectedPoolInfo,
+    selectedPoolId,
+    selPoolId,
+    urlInput,
+    setUrlInput
   };
 });

@@ -95,7 +95,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const internalWallet = ref<any>(null);
   const getInternalWallet = async () => {
-    const response = await apiClient.getWallet();
+    const response = await apiClient.openApi.users.usersWalletGet();
     internalWallet.value = response;
 
     // Load positions when wallet is retrieved (for restored sessions)

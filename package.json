@@ -8,11 +8,12 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "run-p type-check \"build-only {@}\" --",
+    "build": "run-p api:generate type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
-    "lint": "eslint . --fix"
+    "lint": "eslint . --fix",
+    "api:generate": "openapi-generator-cli generate -i https://api.mtsat.xyz/openapi.json -g typescript-fetch -o src/api --skip-validate-spec"
   },
   "dependencies": {
     "@solana/wallet-adapter-base": "^0.9.27",

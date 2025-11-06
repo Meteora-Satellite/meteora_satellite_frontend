@@ -2,6 +2,13 @@ import { toast } from 'vue-sonner';
 
 import { useAuthStore } from '@/stores/auth';
 
+import { Configuration } from '@/api/runtime'
+import { AuthApi } from '@/api/apis/AuthApi'
+import { UsersApi } from '@/api/apis/UsersApi'
+import { PositionsApi } from '@/api/apis/PositionsApi'
+import { WalletsApi } from '@/api/apis/WalletsApi'
+import { NotificationsApi } from '@/api/apis/NotificationsApi'
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://mtsat.xyz';
 
 // Auth Types
@@ -157,35 +164,35 @@ export interface LogoutResponse {
   ok: boolean
 }
 
-export interface Notification {
-  id: string,
-  type: 'rebalance' | 'feeClaim' | 'closePosition',
-  title: string,
-  body: string,
-  createdAt: string,
-  isRead: boolean
-}
+// export interface Notification {
+//   id: string,
+//   type: 'rebalance' | 'feeClaim' | 'closePosition',
+//   title: string,
+//   body: string,
+//   createdAt: string,
+//   isRead: boolean
+// }
 
-export interface GetNotificationsResponse {
-  ok: boolean,
-  data: {
-    items: Notification[],
-    total: number
-  }
-}
+// export interface GetNotificationsResponse {
+//   ok: boolean,
+//   data: {
+//     items: Notification[],
+//     total: number
+//   }
+// }
 
-export interface ReadNotificationsResponse {
-  ok: boolean
-}
+// export interface ReadNotificationsResponse {
+//   ok: boolean
+// }
 
-export interface ReadAllNotificationsResponse {
-  ok: boolean
-}
+// export interface ReadAllNotificationsResponse {
+//   ok: boolean
+// }
 
-export interface GetPrivateKeyResponse {
-  ok: boolean,
-  data: string
-}
+// export interface GetPrivateKeyResponse {
+//   ok: boolean,
+//   data: string
+// }
 
 class APIClient {
   private baseURL: string;
@@ -194,12 +201,66 @@ class APIClient {
   private refreshToken: string | null = null;
   private refreshPromise: Promise<void> | null = null;
 
+  openApi: {
+    auth: AuthApi
+    users: UsersApi
+    positions: PositionsApi
+    wallets: WalletsApi
+    notifications: NotificationsApi
+  }
+  
+
   constructor(baseURL: string) {
     this.baseURL = baseURL;
     // Загружаем токены из localStorage при инициализации
     this.accessToken = localStorage.getItem('access_token');
     this.refreshToken = localStorage.getItem('refresh_token');
+
+  const config = new Configuration({
+    basePath: baseURL,
+    fetchApi: async (url, init) => {
+      const fullUrl = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as any).url || '';
+      const relativeUrl = fullUrl.replace(this.baseURL, '');
+
+      try {
+        const result = await this.request(relativeUrl, init);
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      } catch (err: any) {
+        const status = err.status || 500;
+        const message = err.message || 'Unknown error';
+
+        return new Response(JSON.stringify({ error: message }), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    },
+  });
+
+
+    this.openApi = {
+      auth: new AuthApi(config),
+      users: new UsersApi(config),
+      positions: new PositionsApi(config),
+      wallets: new WalletsApi(config),
+      notifications: new NotificationsApi(config),
+    };
   }
+  async customFetch(url: string, init: RequestInit) {
+    // Просто вызываем твой this.request
+    return fetch(url, {
+      ...init,
+      headers: {
+        ...(init.headers || {}),
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+  }
+
 
   setTokens(access: string, refresh?: string) {
     this.accessToken = access;
@@ -335,13 +396,13 @@ class APIClient {
   }
 
   // Wallet endpoints
-  async getWallet(): Promise<WalletResponse> {
-    return this.request<WalletResponse>('/users/wallet');
-  }
+  // async getWallet(): Promise<WalletResponse> {
+  //   return this.request<WalletResponse>('/users/wallet');
+  // }
 
-  async getWalletBalances(): Promise<WalletBalancesResponse> {
-    return this.request<WalletBalancesResponse>('/wallets/balances');
-  }
+  // async getWalletBalances(): Promise<WalletBalancesResponse> {
+  //   return this.request<WalletBalancesResponse>('/wallets/balances');
+  // }
 
   // Position endpoints
   async createPosition(data: CreatePositionRequest): Promise<CreatePositionResponse> {
@@ -391,29 +452,29 @@ class APIClient {
     });
   }
 
-  async getNotifications(page: number, limit: number) : Promise<GetNotificationsResponse> {
-    return this.request<GetNotificationsResponse>(`/notifications?page=${page}&limit=${limit}`, {
-      method: 'GET',
-    });
-  }
+  // async getNotifications(page: number, limit: number) : Promise<GetNotificationsResponse> {
+  //   return this.request<GetNotificationsResponse>(`/notifications?page=${page}&limit=${limit}`, {
+  //     method: 'GET',
+  //   });
+  // }
 
-  async readNotification(id: Notification['id']) : Promise<ReadNotificationsResponse> {
-    return this.request<ReadAllNotificationsResponse>(`/notifications/${id}/read`, {
-      method: 'POST',
-    });
-  }
+  // async readNotification(id: Notification['id']) : Promise<ReadNotificationsResponse> {
+  //   return this.request<ReadAllNotificationsResponse>(`/notifications/${id}/read`, {
+  //     method: 'POST',
+  //   });
+  // }
 
-  async readAllNotifications() : Promise<ReadAllNotificationsResponse> {
-    return this.request<ReadAllNotificationsResponse>('/notifications/read-all', {
-      method: 'POST',
-    });
-  }
+  // async readAllNotifications() : Promise<ReadAllNotificationsResponse> {
+  //   return this.request<ReadAllNotificationsResponse>('/notifications/read-all', {
+  //     method: 'POST',
+  //   });
+  // }
 
-  async getPrivateKey(): Promise<GetPrivateKeyResponse> {
-    return this.request<GetPrivateKeyResponse>('/wallets/private-key', {
-      method: 'GET',
-    });
-  }
+  // async getPrivateKey(): Promise<GetPrivateKeyResponse> {
+  //   return this.request<GetPrivateKeyResponse>('/wallets/private-key', {
+  //     method: 'GET',
+  //   });
+  // }
 }
 
 export const apiClient = new APIClient(API_BASE_URL);

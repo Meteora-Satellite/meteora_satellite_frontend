@@ -17,7 +17,7 @@ import { Copy } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 
 const showToken = async () => {
-	const request = await apiClient.getPrivateKey()
+	const request = await apiClient.openApi.wallets.walletsPrivateKeyGet()
 	key.value = request.data
 }
 
