@@ -56,8 +56,9 @@ function initializeEditForm() {
 
   if (props.position.feesConfig) {
     editAutoTakeFees.value = true;
-    editFeesInterval.value = props.position.feesConfig.interval / 60; // Convert seconds to minutes
+    editFeesInterval.value = props.position.feesConfig.interval;
     editFeeMode.value = props.position.feesConfig.mode;
+    editFeeModeReinvestStrategy.value = props.position.feesConfig.reinvestStrategy
   }
 }
 
@@ -99,8 +100,9 @@ async function handleUpdateConfig() {
     // Fees config
     if (editAutoTakeFees.value) {
       updateData.feesConfig = {
-        interval: editFeesInterval.value * 60, // Convert minutes to seconds
+        interval: editFeesInterval.value,
         mode: editFeeMode.value,
+        reinvestStrategy: editFeeModeReinvestStrategy.value
       };
     } else {
       updateData.feesConfig = null;
@@ -161,7 +163,7 @@ async function handleManualRebalance() {
 const showClaimFeesModal = ref(false);
 const claimFeesAction = ref<'simple' | 'addLiquidity' | 'swap'>('simple');
 const claimFeesStrategy = ref<'spot' | 'curve' | 'bidAsk' | ''>('');
-
+const editFeeModeReinvestStrategy = ref<'spot' | 'curve' | 'bidAsk'>('spot');
 async function handleClaimFees() {
   isLoading.value = true;
   try {
@@ -300,7 +302,7 @@ const tokenName = computed(() => {
           <div class="grid grid-cols-2 gap-4">
             <div>
               <p class="text-xs text-muted-foreground">Interval</p>
-              <p class="text-sm">{{ position.feesConfig.interval / 60 }} minutes</p>
+              <p class="text-sm">{{ position.feesConfig.interval }} minutes</p>
             </div>
             <div>
               <p class="text-xs text-muted-foreground">Mode</p>
@@ -440,6 +442,24 @@ const tokenName = computed(() => {
                   <SelectItem value="simple">Simple</SelectItem>
                   <SelectItem value="sellIntoSol">Sell Into SOL</SelectItem>
                   <SelectItem value="reinvest">Reinvest</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+
+          <!-- Fees Reinvest Strategy (shown when feeMode is reinvest) -->
+          <div v-if="editFeeMode === 'reinvest'" class="space-y-2">
+            <label class="text-sm font-medium">Fees Reinvesting Strategy</label>
+            <Select v-model="editFeeModeReinvestStrategy">
+              <SelectTrigger>
+                <SelectValue placeholder="Select strategy" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="spot">SPOT</SelectItem>
+                  <SelectItem value="curve">CURVE</SelectItem>
+                  <SelectItem value="bidAsk">BIDASK</SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>

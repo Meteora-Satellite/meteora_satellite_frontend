@@ -169,7 +169,7 @@ function handleSubmit(e: Event) {
   // Add fees config if enabled
   if (result.data.autoTakeFees && result.data.feesInterval) {
     payload.feesConfig = {
-      interval: result.data.feesInterval * 60, // Convert minutes to seconds
+      interval: result.data.feesInterval,
       mode: result.data.feeMode,
     };
 
