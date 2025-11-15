@@ -148,6 +148,8 @@ const createNewWallet = async () => {
     const request = await apiClient.openApi.users.usersCreateNewWalletPost({'authVerifyBody': {address, signature: signatureBase58}})
     
     authStore.internalWallet = request
+
+    useBalanceStore().getBalance()
   } catch (err) {
     toast.error('Unexpected error, try again later.')
   }

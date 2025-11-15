@@ -17,7 +17,7 @@ export class WSClient {
   private ws: WebSocket | null = null;
   private url: string = WS_BASE_URL;
   private token: string;
-  private reconnectInterval = 3000;
+  private reconnectInterval = 10000;
   private listeners: EventCallback[] = [];
   private positionCallbacks: Record<string, (data: PositionOnchainDataSchema) => void> = {};
 
@@ -62,7 +62,6 @@ export class WSClient {
     };
 
     this.ws.onerror = (err) => {
-      console.error('WebSocket error', err);
       this.ws?.close();
     };
   }
