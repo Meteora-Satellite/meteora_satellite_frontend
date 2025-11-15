@@ -13,9 +13,10 @@ import { Button } from '@/components/ui/button';
 import PositionForm from '@/components/positions/PositionForm.vue';
 import PositionManagement from '@/components/positions/PositionManagement.vue';
 import PositionCard from '@/components/positions/PositionCard.vue';
-import { apiClient, type Position } from '@/services/api';
+import { apiClient } from '@/services/api';
 import { getPoolInformation } from '@/services/meteora';
 import { useBalanceStore } from '@/stores/balance';
+import type { ListPositionsResponseDataItemsInner, PositionDTO, PositionOnchainDataSchema } from '@/api';
 
 const authStore = useAuthStore();
 const poolsStore = usePoolsStore();
@@ -27,7 +28,7 @@ const {balance, getBalance} = useBalanceStore()
 // const selectedPoolId = ref<string | null>(null);
 // const realBalance = ref<number | null>(null);
 const positionFormRef = ref<InstanceType<typeof PositionForm> | null>(null);
-const openedPosition = ref<Position | null>(null);
+const openedPosition = ref<PositionDTO | null>(null);
 const isSubmittingPosition = ref(false);
 const isLoadingPosition = ref(false);
 
@@ -54,10 +55,7 @@ onMounted(async () => {
 
 
 
-
-
 watch(() => usePoolsStore().selectedPoolId, async (newValue) => {
-  console.log('new pool id')
   if (newValue) {
     isLoadingPosition.value = true;
     try {
@@ -65,21 +63,16 @@ watch(() => usePoolsStore().selectedPoolId, async (newValue) => {
       await poolsStore.getSelectedPoolInfo(newValue);
 
       // Check if there's an existing position for this pool
-      const positionsResponse = await apiClient.getPositions(newValue);
+      const positionId = usePoolsStore().selectedPoolPositionId;
+      if (!positionId) return;
 
-      if (positionsResponse.ok && positionsResponse.data.items.length > 0) {
-        // Use the first position found for this pool
-        const position = positionsResponse.data.items[0];
-        if (position) {
-          openedPosition.value = position;
-          toast.info('Found existing position for this pool', {
-            description: `Position ID: ${position.id}`,
-          });
-        } else {
-          openedPosition.value = null;
-        }
+      const position_response = await apiClient.openApi.positions.positionsPositionIdGet({positionId});
+      if (position_response.ok && position_response.data) {
+        openedPosition.value = position_response.data;
+        toast.info('Found existing position for this pool', {
+          description: `Position ID: ${position_response.data.id}`,
+        });
       } else {
-        // No positions found, reset to allow creating new one
         openedPosition.value = null;
       }
     } catch (error: any) {
@@ -112,7 +105,7 @@ function handleOpenPosition() {
 async function handlePositionSubmit(payload: any) {
   isSubmittingPosition.value = true;
   try {
-    const response = await apiClient.createPosition(payload);
+    const response = await apiClient.openApi.positions.positionsPost({createPositionBody: payload});
 
     if (response.ok) {
       openedPosition.value = response.data;
@@ -125,7 +118,7 @@ async function handlePositionSubmit(payload: any) {
         description: `Position ID: ${response.data.id}`,
       });
       // Refresh balance after opening position
-      await getBalance();
+      // await getBalance();
     }
   } catch (error: any) {
     toast.error('Failed to open position', {
@@ -148,22 +141,23 @@ function handlePositionClosed() {
     description: 'You can now open a new position',
   });
   // Refresh balance after closing position
-  getBalance();
+  // getBalance();
 }
 
 // Handle position updated event
-function handlePositionUpdated(updatedPosition: Position) {
+function handlePositionUpdated(updatedPosition: PositionDTO) {
   // Update the UI with the fresh position data from the server
   openedPosition.value = updatedPosition;
   // Update in positions store as well
   positionsStore.updatePosition(updatedPosition.id, updatedPosition);
   // Refresh balance after updating position
-  getBalance();
+  // getBalance();
 }
 
 // Handle position card click
-async function handlePositionCardClick(position: Position) {
+async function handlePositionCardClick(position: ListPositionsResponseDataItemsInner) {
   // Set the pool ID to load that position
+  poolsStore.setSelectedPoolPositionId(position.id)
   poolsStore.setUrlInput(position.poolId);
   poolsStore.selPoolId(position.poolId);
 }
@@ -187,7 +181,7 @@ async function loadPoolNames() {
 <template>
   <div class="h-full w-full flex flex-col relative">
 
-    <div class="flex flex-col justify-start items-center overflow-y-auto pt-6">
+    <div class="flex flex-col justify-center items-center overflow-y-auto">
       <!-- Positions List Section -->
       <div v-if="positionsStore.hasPositions && !poolsStore.selectedPoolId" class="w-full lg:px-40 mb-8">
         <Card class="!p-6 bg-card/20 backdrop-blur-xs">
@@ -211,7 +205,7 @@ async function loadPoolNames() {
         </Card>
       </div>
 
-      <div v-if="poolsStore.selectedPoolId" class="h-full w-full p-10 lg:px-40">
+      <div v-if="poolsStore.selectedPoolId" class="h-full w-full p-6 lg:px-20">
         <Card class="!p-6 bg-card/20 backdrop-blur-xs w-full h-full min-w-0">
           <CardHeader class="w-full min-w-0">
             <h2 class="text-lg font-semibold mb-2">Selected Pool <i v-if="poolsStore.selectedPoolInfo" class="text-sattelite-light/50">({{ poolsStore.selectedPoolInfo.name }})</i></h2>
@@ -296,7 +290,7 @@ async function loadPoolNames() {
                   v-else-if="!openedPosition"
                   ref="positionFormRef"
                   :pool-id="poolsStore.selectedPoolId!"
-                  :max-amount="balance ?? undefined"
+                  :max-amount="useBalanceStore().balance ?? undefined"
                   :pool-info="{
                     name: poolsStore.selectedPoolInfo.name,
                     current_price: poolsStore.selectedPoolInfo.current_price
@@ -314,6 +308,10 @@ async function loadPoolNames() {
                   }"
                   @closed="handlePositionClosed"
                   @updated="handlePositionUpdated"
+                  @onChainUpdated="(val: PositionOnchainDataSchema) => {
+                    if (openedPosition)
+                      openedPosition.onchainData = val
+                  }"
                 />
               </div>
             </div>

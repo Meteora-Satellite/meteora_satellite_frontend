@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, defineProps, defineEmits, watch } from 'vue';
 import {
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -11,14 +10,37 @@ import {
   AlertDialogTitle
 } from 'reka-ui'
 import { apiClient } from '@/services/api';
-import ShimmerButton from '../ui/shimmer-button/ShimmerButton.vue';
 import Button from '../ui/button/Button.vue';
 import { Copy } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
+import bs58 from 'bs58';
+import { useWallet } from 'solana-wallets-vue';
 
+const { publicKey, signMessage } = useWallet();
 const showToken = async () => {
-	const request = await apiClient.openApi.wallets.walletsPrivateKeyGet()
-	key.value = request.data
+  try {
+    if (!publicKey.value || !signMessage?.value) {
+      throw new Error('Wallet connection failed');
+    }
+
+    const address = publicKey.value.toBase58();
+    const nonceResponse = await apiClient.openApi.auth.authNoncePost({authNonceBody: {address}})
+
+    if (!nonceResponse.ok) {
+      throw new Error('Failed to get nonce');
+    }
+
+    const message = nonceResponse.data.message;
+    const messageBytes = new TextEncoder().encode(message);
+    const signatureBytes = await signMessage.value(messageBytes);
+    const signatureBase58 = bs58.encode(signatureBytes);
+
+
+    const request = await apiClient.openApi.wallets.walletsPrivateKeyPost({'authVerifyBody': {address, signature: signatureBase58}})
+    key.value = request.data
+  } catch (err) {
+    toast.error('Unexpected error, try again later.')
+  }
 }
 
 const props = defineProps<{

@@ -25,7 +25,6 @@ const readAll = async () => {
     await apiClient.openApi.notifications.notificationsReadAllPost()
     notifications.value.forEach((n) => n.isRead = true)
   } catch (err) {
-    console.log(err);
     toast.error('Unexpected error');
   }
 }

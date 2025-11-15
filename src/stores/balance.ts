@@ -1,13 +1,16 @@
 import { apiClient } from "@/services/api";
 import { defineStore } from "pinia";
-import { onMounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { toast } from "vue-sonner";
 import { useAuthStore } from "./auth";
-import { BaseAPI } from "@/api";
 
 
 export const useBalanceStore = defineStore('balance', () => {
     const balance = ref<number | null>(null);
+
+    const setBalance = (val: number | null) => {
+        balance.value = val
+    }
 
     const getBalance = async () => {
         try {
@@ -22,6 +25,17 @@ export const useBalanceStore = defineStore('balance', () => {
     }
     const auth = useAuthStore()
 
+    // let balanceInterval:any;
+    // onMounted(() => {
+    //     balanceInterval = setInterval(() => {
+    //         getBalance()
+    //     }, 10000)
+    // })
+
+    // onUnmounted(() => {
+        // if (balanceInterval) clearInterval(balanceInterval)
+    // })
+
     watch(
         () => auth.authenticated,
         (isAuth) => {
@@ -34,5 +48,5 @@ export const useBalanceStore = defineStore('balance', () => {
         { immediate: true }
     )
 
-    return {balance, getBalance}
+    return {balance, getBalance, setBalance}
 })

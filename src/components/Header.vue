@@ -18,6 +18,11 @@ import { usePoolsStore } from '@/stores/pools';
 import { toast } from 'vue-sonner';
 import { Button } from './ui/button';
 import { useBalanceStore } from '@/stores/balance';
+
+import bs58 from 'bs58';
+import { useWallet } from 'solana-wallets-vue';
+import { apiClient } from '@/services/api';
+
 const authStore = useAuthStore();
 const poolsStore = usePoolsStore();
 const {balance, getBalance} = useBalanceStore()
@@ -38,7 +43,6 @@ const walletAddress = computed(() => {
   return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
 });
 
-const showNotifications = ref<boolean>(false)
 const showPrivateKeyModal = ref<boolean>(false)
 
 
@@ -119,12 +123,38 @@ function extractPoolId(input: string): string | null {
     return null;
   }
 }
-const openedPosition = ref<any>()
+
+
+const createNewWallet = async () => {
+  try {
+    const { publicKey, signMessage } = useWallet();
+    if (!publicKey.value || !signMessage?.value) {
+      throw new Error('Wallet connection failed');
+    }
+
+    const address = publicKey.value.toBase58();
+    const nonceResponse = await apiClient.openApi.auth.authNoncePost({authNonceBody: {address}})
+
+    if (!nonceResponse.ok) {
+      throw new Error('Failed to get nonce');
+    }
+
+    const message = nonceResponse.data.message;
+    const messageBytes = new TextEncoder().encode(message);
+    const signatureBytes = await signMessage.value(messageBytes);
+    const signatureBase58 = bs58.encode(signatureBytes);
+
+
+    const request = await apiClient.openApi.users.usersCreateNewWalletPost({'authVerifyBody': {address, signature: signatureBase58}})
+    
+    authStore.internalWallet = request
+  } catch (err) {
+    toast.error('Unexpected error, try again later.')
+  }
+}
 </script>
 <template>
-  <NotificationsSidebar
-    :open="showNotifications"
-  />
+  <NotificationsSidebar/>
   <PrivateKey
     v-if="showPrivateKeyModal"
     :open="true"
@@ -140,15 +170,14 @@ const openedPosition = ref<any>()
         <img
           src="/logos/logo-dark.png"
           class="h-8 w-fit cursor-pointer hover:opacity-80 transition-opacity shrink-0"
-          @click="poolsStore.selPoolId(null); poolsStore.setUrlInput(null); openedPosition = null"
+          @click="poolsStore.selPoolId(null); poolsStore.setUrlInput(null);"
         />
-
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
             <Card class="!px-3 !py-2 cursor-pointer hover:bg-accent transition-colors shrink-0">
               <div class="space-y-1">
                 <div class="text-sm font-medium">
-                  {{ balance !== null ? balance.toFixed(3) : '...' }} SOL
+                  {{ useBalanceStore().balance !== null ? useBalanceStore().balance?.toFixed(3) : '...' }} SOL
                 </div>
                 <div v-if="walletAddress" class="text-xs text-muted-foreground">
                   {{ walletAddress }}
@@ -199,6 +228,9 @@ const openedPosition = ref<any>()
             <DropdownMenuItem @click="showPrivateKeyModal = true">
               <span>Get Private Key</span>
             </DropdownMenuItem>
+            <DropdownMenuItem @click="createNewWallet()">
+              <span>Create new wallet</span>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem class="text-red-500" @click="authStore.signOut()">
               <span>Logout</span>
@@ -211,7 +243,7 @@ const openedPosition = ref<any>()
       <img
         src="/logos/logo-dark.png"
         class="hidden lg:block h-8 w-fit cursor-pointer hover:opacity-80 transition-opacity shrink-0"
-        @click="poolsStore.selPoolId(null); poolsStore.setUrlInput(null); openedPosition = null"
+        @click="poolsStore.selPoolId(null); poolsStore.setUrlInput(null);"
       />
 
       <!-- Input field (full width on mobile, centered with max-width on desktop) -->
@@ -228,9 +260,6 @@ const openedPosition = ref<any>()
             class="w-full"
             @keyup.enter="handleUrlSubmit"
             @paste="handlePaste"
-            @update="(val: string) => {
-              console.log(val)
-            }"
           />
           <div v-if="poolsStore.selectedPoolId" class="flex items-center gap-2 mt-2">
             <span class="text-xs text-green-500">✓ Pool ID:</span>
@@ -247,7 +276,7 @@ const openedPosition = ref<any>()
           <Card class="hidden lg:block w-fit !px-4 !py-3 cursor-pointer hover:bg-accent transition-colors shrink-0">
             <div class="space-y-1">
               <div class="text-sm font-medium">
-                Balance: {{ balance !== null ? balance.toFixed(3) : '...' }} SOL
+                Balance: {{ useBalanceStore().balance !== null ? useBalanceStore().balance?.toFixed(3) : '...' }} SOL
               </div>
               <div v-if="walletAddress" class="text-xs text-muted-foreground">
                 {{ walletAddress }}
@@ -297,6 +326,9 @@ const openedPosition = ref<any>()
           </DropdownMenuItem>
           <DropdownMenuItem @click="showPrivateKeyModal = true">
             <span>Get Private Key</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem @click="createNewWallet()">
+            <span>Create new wallet</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem class="text-red-500" @click="authStore.signOut();">

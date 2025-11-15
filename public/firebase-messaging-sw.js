@@ -13,13 +13,12 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Обработка фоновых уведомлений
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message', payload);
   const notificationTitle = payload.notification?.title || 'Новое уведомление';
   const notificationOptions = {
     body: payload.notification?.body,
-    icon: '/icon.png', // можно поменять
+    icon: '/icon.png',
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);

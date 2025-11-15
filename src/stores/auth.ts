@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router';
 
 import { apiClient } from '@/services/api';
 import { usePositionsStore } from '@/stores/positions';
+import { useWSClientStore } from './ws';
 
 export const useAuthStore = defineStore('auth', () => {
   const router = useRouter();
@@ -28,7 +29,7 @@ export const useAuthStore = defineStore('auth', () => {
       const address = walletPublicKey.toBase58();
 
       // 1. Запрашиваем готовое SIWS message с сервера
-      const nonceResponse = await apiClient.getNonce(address);
+      const nonceResponse = await apiClient.openApi.auth.authNoncePost({authNonceBody: {address}})
 
       if (!nonceResponse.ok) {
         throw new Error('Failed to get nonce');
@@ -75,6 +76,8 @@ export const useAuthStore = defineStore('auth', () => {
   async function signOut() {
     try {
       await apiClient.logout();
+      useWSClientStore().wsClient.close()
+      useWSClientStore().setWSClient(null)
       publicKey.value = null;
       authenticated.value = false;
       signedMessage.value = null;

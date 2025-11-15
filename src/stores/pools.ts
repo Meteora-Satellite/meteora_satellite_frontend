@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 import { getPoolInformation } from '@/services/meteora';
+import type { PositionDTO } from '@/api';
 
 export const usePoolsStore = defineStore('pools', () => {
   const selectedPoolInfo = ref<any>();
@@ -10,11 +11,17 @@ export const usePoolsStore = defineStore('pools', () => {
 
   const urlInput = ref<string | null>(null)
 
+  const selectedPoolPositionId = ref<PositionDTO['id'] | null>(null)
+
   const selPoolId = (val: string | null) => {
     selectedPoolId.value = val
   }
   const setUrlInput = (val: string | null) => {
     urlInput.value = val
+  }
+
+  const setSelectedPoolPositionId = (val: PositionDTO['id']) => {
+    selectedPoolPositionId.value = val
   }
   // const selectedPoolInfo = ref<any>({
   //   address: "8ztFxjFPfVUtEf4SLSapcFj8GW2dxyUA9no2bLPq7H7V",
@@ -87,9 +94,11 @@ export const usePoolsStore = defineStore('pools', () => {
   return {
     selectedPoolInfo,
     getSelectedPoolInfo,
+    selectedPoolPositionId,
     selectedPoolId,
     selPoolId,
     urlInput,
-    setUrlInput
+    setUrlInput,
+    setSelectedPoolPositionId
   };
 });

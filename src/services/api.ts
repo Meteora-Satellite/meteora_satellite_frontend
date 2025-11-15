@@ -8,20 +8,21 @@ import { UsersApi } from '@/api/apis/UsersApi'
 import { PositionsApi } from '@/api/apis/PositionsApi'
 import { WalletsApi } from '@/api/apis/WalletsApi'
 import { NotificationsApi } from '@/api/apis/NotificationsApi'
+import { PushApi, type PositionDTO } from '@/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://mtsat.xyz';
+export const API_BASE_URL = import.meta.env.DEV ? import.meta.env.VITE_DEV_API_URL : import.meta.env.VITE_API_URL || 'https://mtsat.xyz';
 
 // Auth Types
-export interface NonceRequest {
-  address: string
-}
+// export interface NonceRequest {
+//   address: string
+// }
 
-export interface NonceResponse {
-  ok: boolean
-  data: {
-    message: string
-  }
-}
+// export interface NonceResponse {
+//   ok: boolean
+//   data: {
+//     message: string
+//   }
+// }
 
 export interface VerifyRequest {
   address: string
@@ -66,55 +67,56 @@ export interface RebalanceConfig {
 
 export interface FeesConfig {
   interval: number
-  mode: 'simple' | 'sellIntoSol' | 'reinvest'
+  mode: 'simple' | 'sellIntoSol' | 'reinvest',
+  reinvestStrategy: 'spot' | 'curve' | 'bidAsk'
 }
 
-export interface CreatePositionRequest {
-  poolId: string
-  solAmount: string
-  strategyType: 'spot' | 'curve' | 'bidAsk'
-  takeProfitConfig?: TakeProfitConfig
-  rebalanceConfig?: RebalanceConfig
-  feesConfig?: FeesConfig
-}
+// export interface CreatePositionRequest {
+//   poolId: string
+//   solAmount: string
+//   strategyType: 'spot' | 'curve' | 'bidAsk'
+//   takeProfitConfig?: TakeProfitConfig
+//   rebalanceConfig?: RebalanceConfig
+//   feesConfig?: FeesConfig
+// }
 
-export interface Position {
-  id: string
-  poolId: string
-  solAmount: string
-  strategyType: 'spot' | 'curve' | 'bidAsk'
-  takeProfitConfig?: TakeProfitConfig | null
-  rebalanceConfig?: RebalanceConfig | null
-  feesConfig?: FeesConfig | null
-  createdAt: string
-  updatedAt: string
-}
+// export interface Position {
+//   id: string
+//   poolId: string
+//   solAmount: string
+//   strategyType: 'spot' | 'curve' | 'bidAsk'
+//   takeProfitConfig?: TakeProfitConfig | null
+//   rebalanceConfig?: RebalanceConfig | null
+//   feesConfig?: FeesConfig | null
+//   createdAt: string
+//   updatedAt: string
+// }
 
-export interface CreatePositionResponse {
-  ok: boolean
-  data: Position
-}
+// export interface CreatePositionResponse {
+//   ok: boolean
+//   data: PositionDTO
+// }
 
-export interface GetPositionsResponse {
-  ok: boolean
-  data: {
-    items: Position[]
-    page: number
-    limit: number
-    total: number
-  }
-}
+// export interface GetPositionsResponse {
+//   ok: boolean
+//   data: {
+//     items: PositionDTO[]
+//     page: number
+//     limit: number
+//     total: number
+//   }
+// }
 
 // Update Position Types
-export interface UpdatePositionRequest {
-  takeProfitConfig?: TakeProfitConfig | null
-  rebalanceConfig?: RebalanceConfig | null
-  feesConfig?: FeesConfig | null
-}
+// export interface UpdatePositionRequest {
+//   takeProfitConfig?: TakeProfitConfig | null
+//   rebalanceConfig?: RebalanceConfig | null
+//   feesConfig?: FeesConfig | null
+// }
 
 export interface UpdatePositionResponse {
   ok: boolean
-  data: Position
+  data: PositionDTO
 }
 
 // Claim Fees Types
@@ -157,7 +159,7 @@ export interface RemoveLiquidityResponse {
 // Close Position Response
 export interface ClosePositionResponse {
   ok: boolean
-  data: Position
+  data: PositionDTO
 }
 
 export interface LogoutResponse {
@@ -207,6 +209,7 @@ class APIClient {
     positions: PositionsApi
     wallets: WalletsApi
     notifications: NotificationsApi
+    push: PushApi
   }
   
 
@@ -247,6 +250,7 @@ class APIClient {
       positions: new PositionsApi(config),
       wallets: new WalletsApi(config),
       notifications: new NotificationsApi(config),
+      push: new PushApi(config)
     };
   }
   async customFetch(url: string, init: RequestInit) {
@@ -367,12 +371,12 @@ class APIClient {
   }
 
   // Auth endpoints
-  async getNonce(address: string): Promise<NonceResponse> {
-    return this.request<NonceResponse>('/auth/nonce', {
-      method: 'POST',
-      body: JSON.stringify({ address } as NonceRequest),
-    });
-  }
+  // async getNonce(address: string): Promise<NonceResponse> {
+  //   return this.request<NonceResponse>('/auth/nonce', {
+  //     method: 'POST',
+  //     body: JSON.stringify({ address } as NonceRequest),
+  //   });
+  // }
 
   async logout(): Promise<LogoutResponse> {
     return this.request<LogoutResponse>('/auth/logout', {
@@ -405,19 +409,19 @@ class APIClient {
   // }
 
   // Position endpoints
-  async createPosition(data: CreatePositionRequest): Promise<CreatePositionResponse> {
-    return this.request<CreatePositionResponse>('/positions', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
+  // async createPosition(data: CreatePositionRequest): Promise<CreatePositionResponse> {
+  //   return this.request<CreatePositionResponse>('/positions', {
+  //     method: 'POST',
+  //     body: JSON.stringify(data),
+  //   });
+  // }
 
-  async getPositions(poolId?: string): Promise<GetPositionsResponse> {
-    const url = poolId ? `/positions?poolId=${poolId}` : '/positions';
-    return this.request<GetPositionsResponse>(url, {
-      method: 'GET',
-    });
-  }
+  // async getPositions(poolId?: string): Promise<GetPositionsResponse> {
+  //   const url = poolId ? `/positions?poolId=${poolId}` : '/positions';
+  //   return this.request<GetPositionsResponse>(url, {
+  //     method: 'GET',
+  //   });
+  // }
 
   async closePosition(positionId: string): Promise<ClosePositionResponse> {
     return this.request<ClosePositionResponse>(`/positions/${positionId}`, {
@@ -425,12 +429,12 @@ class APIClient {
     });
   }
 
-  async updatePosition(positionId: string, data: UpdatePositionRequest): Promise<UpdatePositionResponse> {
-    return this.request<UpdatePositionResponse>(`/positions/${positionId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-  }
+  // async updatePosition(positionId: string, data: UpdatePositionRequest): Promise<UpdatePositionResponse> {
+  //   return this.request<UpdatePositionResponse>(`/positions/${positionId}`, {
+  //     method: 'PATCH',
+  //     body: JSON.stringify(data),
+  //   });
+  // }
 
   async claimFees(positionId: string, data: ClaimFeesRequest): Promise<ClaimFeesResponse> {
     return this.request<ClaimFeesResponse>(`/positions/${positionId}/claim_fees`, {

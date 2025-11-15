@@ -35,7 +35,6 @@ export function useNotifications() {
 
   const addNotification = (notification: NotificationDTO) => {
     notifications.value.unshift(notification);
-    console.log(notifications.value);
   };
 
   const markAsRead = async (id: NotificationDTO['id']) => {

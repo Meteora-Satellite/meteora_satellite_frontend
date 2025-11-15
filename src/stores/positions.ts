@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 
-import { apiClient, type Position } from '@/services/api';
+import { apiClient } from '@/services/api';
+import type { ListPositionsResponseDataItemsInner, PositionDTO } from '@/api';
 
 export const usePositionsStore = defineStore('positions', () => {
-  const allPositions = ref<Position[]>([]);
+  const allPositions = ref<ListPositionsResponseDataItemsInner[]>([]);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
@@ -17,8 +18,7 @@ export const usePositionsStore = defineStore('positions', () => {
     error.value = null;
 
     try {
-      const response = await apiClient.getPositions();
-
+      const response = await apiClient.openApi.positions.positionsGet()
       if (response.ok) {
         allPositions.value = response.data.items;
       } else {
@@ -39,7 +39,7 @@ export const usePositionsStore = defineStore('positions', () => {
   }
 
   // Add a new position to the list
-  function addPosition(position: Position): void {
+  function addPosition(position: PositionDTO): void {
     allPositions.value.push(position);
   }
 
@@ -49,7 +49,7 @@ export const usePositionsStore = defineStore('positions', () => {
   }
 
   // Update a position in the list
-  function updatePosition(positionId: string, updatedPosition: Position): void {
+  function updatePosition(positionId: string, updatedPosition: PositionDTO): void {
     const index = allPositions.value.findIndex(p => p.id === positionId);
     if (index !== -1) {
       allPositions.value[index] = updatedPosition;

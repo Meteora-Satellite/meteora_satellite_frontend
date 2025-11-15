@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { toast } from 'vue-sonner';
 
-import { apiClient, type Position, type UpdatePositionRequest, type ClaimFeesRequest, type RebalancePositionRequest } from '@/services/api';
+import { apiClient, type ClaimFeesRequest } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import Separator from '@/components/ui/separator/Separator.vue';
@@ -10,9 +10,13 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RebalanceConfigStrategyEnum, RebalanceConfigTypeEnum, type FeesConfigReinvestStrategyEnum, type PositionDTO, type PositionOnchainDataSchema, type PositionsPositionIdPatchOperationRequest, type PositionsPositionIdPatchRequest } from '@/api';
+import { RadioGroupIndicator, RadioGroupItem, RadioGroupRoot } from 'reka-ui';
+import PositionFullInfo from './PositionFullInfo.vue';
+import { useWSClientStore } from '@/stores/ws';
 
 interface Props {
-  position: Position;
+  position: PositionDTO;
   poolInfo?: {
     name: string;
     current_price: number;
@@ -22,7 +26,8 @@ interface Props {
 const props = defineProps<Props>();
 const emit = defineEmits<{
   closed: []
-  updated: [position: Position]
+  updated: [position: PositionDTO],
+  onChainUpdated: [PositionOnchainDataSchema]
 }>();
 
 // State
@@ -31,20 +36,41 @@ const isLoading = ref(false);
 
 // Edit form fields
 const editTakeProfitPrice = ref<string>('');
+const editTakeProfitOutOfRange = ref<boolean>(false);
 const editStopLossPrice = ref<string>('');
+const editStopLossOutOfRange = ref<boolean>(false);
+const editPriceCurrency = ref<'usd' | 'sol'>('sol');
 const editAutoRebalance = ref(false);
-const editRebalanceStrategy = ref<'spot' | 'curve' | 'bidAsk' | ''>('');
+const editRebalanceStrategy = ref<RebalanceConfigStrategyEnum>('bidAsk');
+const editRebalanceType = ref<RebalanceConfigTypeEnum>('standard')
 const editStopRebalanceMinPrice = ref<string>('');
 const editStopRebalanceMaxPrice = ref<string>('');
 const editAutoTakeFees = ref(false);
 const editFeesInterval = ref<number>(1);
 const editFeeMode = ref<'simple' | 'sellIntoSol' | 'reinvest'>('simple');
 
+const editFeeModeReinvestStrategy = ref<FeesConfigReinvestStrategyEnum>('spot');
 // Initialize edit form with current position data
 function initializeEditForm() {
   if (props.position.takeProfitConfig) {
-    editTakeProfitPrice.value = props.position.takeProfitConfig.takeProfitPrice || '';
-    editStopLossPrice.value = props.position.takeProfitConfig.stopLossPrice || '';
+    if (props.position.takeProfitConfig.outOfRange) {
+      editTakeProfitOutOfRange.value = props.position.takeProfitConfig.outOfRange;
+    } else if (props.position.takeProfitConfig.price || props.position.takeProfitConfig.priceUsd) {
+      editTakeProfitPrice.value = props.position.takeProfitConfig?.price ?? props.position.takeProfitConfig?.priceUsd ?? '';
+
+      if (props.position.takeProfitConfig.priceUsd) editPriceCurrency.value = 'usd'
+    }
+  }
+
+
+  if (props.position.stopLossConfig) {
+    if (props.position.stopLossConfig.outOfRange) {
+      editStopLossOutOfRange.value = props.position.stopLossConfig.outOfRange;
+    } else if (props.position.stopLossConfig.price || props.position.stopLossConfig.priceUsd) {
+      editStopLossPrice.value = props.position.stopLossConfig?.price ?? props.position.stopLossConfig?.priceUsd ?? '';
+
+      if (props.position.stopLossConfig.priceUsd) editPriceCurrency.value = 'usd'
+    }
   }
 
   if (props.position.rebalanceConfig) {
@@ -58,7 +84,7 @@ function initializeEditForm() {
     editAutoTakeFees.value = true;
     editFeesInterval.value = props.position.feesConfig.interval;
     editFeeMode.value = props.position.feesConfig.mode;
-    editFeeModeReinvestStrategy.value = props.position.feesConfig.reinvestStrategy
+    editFeeModeReinvestStrategy.value = props.position.feesConfig?.reinvestStrategy || 'spot'
   }
 }
 
@@ -74,22 +100,36 @@ function toggleEditMode() {
 async function handleUpdateConfig() {
   isLoading.value = true;
   try {
-    const updateData: UpdatePositionRequest = {};
+    const updateData: PositionsPositionIdPatchRequest = {};
 
     // Take profit config
-    if (editTakeProfitPrice.value || editStopLossPrice.value) {
+    const keyCurrency = editPriceCurrency.value === 'sol' ? 'price' : 'priceUsd';
+    if (editTakeProfitPrice.value && !editTakeProfitOutOfRange.value) {
       updateData.takeProfitConfig = {
-        takeProfitPrice: String(editTakeProfitPrice.value),
-        stopLossPrice: String(editStopLossPrice.value),
-      };
+        [keyCurrency]: String(editTakeProfitPrice.value) || ''
+      }
+    } else if (editStopLossOutOfRange.value) {
+      updateData.takeProfitConfig ??= {}
+      updateData.takeProfitConfig.outOfRange = editTakeProfitOutOfRange.value
     } else {
-      updateData.takeProfitConfig = null;
+      updateData.takeProfitConfig = null
     }
 
+    if (editStopLossPrice.value && !editStopLossOutOfRange.value) {
+      updateData.stopLossConfig = {
+        [keyCurrency]: String(editStopLossPrice.value) || ''
+      }
+    } else if (editStopLossOutOfRange.value) {
+      updateData.stopLossConfig ??= {}
+      updateData.stopLossConfig.outOfRange = editStopLossOutOfRange.value
+    } else {
+      updateData.stopLossConfig = null
+    }
     // Rebalance config
     if (editAutoRebalance.value && editRebalanceStrategy.value) {
       updateData.rebalanceConfig = {
         strategy: editRebalanceStrategy.value,
+        type: editRebalanceType.value,
         stopRebalanceMinimumPrice: editStopRebalanceMinPrice.value ? String(editStopRebalanceMinPrice.value) : undefined,
         stopRebalanceMaximumPrice: editStopRebalanceMaxPrice.value ? String(editStopRebalanceMaxPrice.value) : undefined,
       };
@@ -107,8 +147,8 @@ async function handleUpdateConfig() {
     } else {
       updateData.feesConfig = null;
     }
-
-    const response = await apiClient.updatePosition(props.position.id, updateData);
+    const data:PositionsPositionIdPatchOperationRequest = {positionId: props.position.id, positionsPositionIdPatchRequest: updateData}
+    const response = await apiClient.openApi.positions.positionsPositionIdPatch(data);
 
     toast.success('Position updated successfully');
     isEditMode.value = false;
@@ -130,40 +170,39 @@ async function handleUpdateConfig() {
 }
 
 // Manual rebalance state
-const showRebalanceModal = ref(false);
-const rebalanceStrategy = ref<'spot' | 'curve' | 'bidAsk' | ''>('');
+// const showRebalanceModal = ref(false);
+// const rebalanceStrategy = ref<'spot' | 'curve' | 'bidAsk' | ''>('');
 
-async function handleManualRebalance() {
-  if (!rebalanceStrategy.value) {
-    toast.error('Please select a rebalance strategy');
-    return;
-  }
+// async function handleManualRebalance() {
+//   if (!rebalanceStrategy.value) {
+//     toast.error('Please select a rebalance strategy');
+//     return;
+//   }
 
-  isLoading.value = true;
-  try {
-    const response = await apiClient.rebalancePosition(props.position.id, {
-      strategyType: rebalanceStrategy.value,
-    });
+//   isLoading.value = true;
+//   try {
+//     const response = await apiClient.rebalancePosition(props.position.id, {
+//       strategyType: rebalanceStrategy.value,
+//     });
 
-    toast.success('Rebalance request submitted', {
-      description: `Strategy: ${response.data.requestedStrategy}`,
-    });
-    showRebalanceModal.value = false;
-    rebalanceStrategy.value = '';
-  } catch (error: any) {
-    toast.error('Failed to rebalance position', {
-      description: error.message || 'Unknown error',
-    });
-  } finally {
-    isLoading.value = false;
-  }
-}
+//     toast.success('Rebalance request submitted', {
+//       description: `Strategy: ${response.data.requestedStrategy}`,
+//     });
+//     showRebalanceModal.value = false;
+//     rebalanceStrategy.value = '';
+//   } catch (error: any) {
+//     toast.error('Failed to rebalance position', {
+//       description: error.message || 'Unknown error',
+//     });
+//   } finally {
+//     isLoading.value = false;
+//   }
+// }
 
 // Claim fees state
 const showClaimFeesModal = ref(false);
 const claimFeesAction = ref<'simple' | 'addLiquidity' | 'swap'>('simple');
 const claimFeesStrategy = ref<'spot' | 'curve' | 'bidAsk' | ''>('');
-const editFeeModeReinvestStrategy = ref<'spot' | 'curve' | 'bidAsk'>('spot');
 async function handleClaimFees() {
   isLoading.value = true;
   try {
@@ -220,11 +259,57 @@ async function handleClosePosition() {
 }
 
 // Extract token name
-const tokenName = computed(() => {
-  if (!props.poolInfo?.name) return 'TOKEN';
-  const parts = props.poolInfo.name.split('-');
-  return parts[0] || 'TOKEN';
+// const tokenName = computed(() => {
+//   if (!props.poolInfo?.name) return 'TOKEN';
+//   const parts = props.poolInfo.name.split('-');
+//   return parts[0] || 'TOKEN';
+// });
+
+const tpValue = computed(() => {
+  const data = props.position.takeProfitConfig;
+
+  if (data?.outOfRange) return 'Out of range';
+
+  if (data?.price && data.price.trim() !== '') {
+    return data.price;
+  }
+
+  if (data?.priceUsd && data.priceUsd.trim() !== '') {
+    return '$' + data.priceUsd;
+  }
 });
+
+const slValue = computed(() => {
+  const data = props.position.stopLossConfig;
+
+  if (data?.outOfRange) return 'Out of range';
+
+  if (data?.price && data.price.trim() !== '') {
+    return data.price;
+  }
+
+  if (data?.priceUsd && data.priceUsd.trim() !== '') {
+    return '$' + data.priceUsd;
+  }
+
+  return 'Not set';
+});
+
+onMounted(() => {
+  const {wsClient} = useWSClientStore()
+  if (wsClient && props.position.id) {
+    wsClient.subscribeOnPositionUpdate(props.position.id, (val: PositionOnchainDataSchema) => {
+      emit('onChainUpdated', val)
+    })
+  }
+})
+
+onUnmounted(() => {
+  const {wsClient} = useWSClientStore()
+  if (wsClient && props.position.id) {
+    wsClient.unsubscribeFromPositionUpdate(props.position.id)
+  }
+})
 </script>
 
 <template>
@@ -253,6 +338,10 @@ const tokenName = computed(() => {
           <p class="text-base font-medium">{{ position.solAmount }} SOL</p>
         </div>
       </div>
+      <Separator />
+      <PositionFullInfo
+        :position="position"
+      />
     </div>
 
     <Separator />
@@ -265,11 +354,11 @@ const tokenName = computed(() => {
         <div class="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-md">
           <div>
             <p class="text-xs text-muted-foreground">Take Profit Price</p>
-            <p class="text-sm">{{ position.takeProfitConfig.takeProfitPrice || 'Not set' }}</p>
+            <p class="text-sm">{{ tpValue }}</p>
           </div>
           <div>
             <p class="text-xs text-muted-foreground">Stop Loss Price</p>
-            <p class="text-sm">{{ position.takeProfitConfig.stopLossPrice || 'Not set' }}</p>
+            <p class="text-sm">{{ slValue }}</p>
           </div>
         </div>
       </div>
@@ -317,9 +406,9 @@ const tokenName = computed(() => {
         <Button variant="outline" :disabled="isLoading" @click="toggleEditMode">
           Update Config
         </Button>
-        <Button variant="outline" :disabled="isLoading" @click="showRebalanceModal = true">
+        <!-- <Button variant="outline" :disabled="isLoading" @click="showRebalanceModal = true">
           Manual Rebalance
-        </Button>
+        </Button> -->
         <Button variant="outline" :disabled="isLoading" @click="showClaimFeesModal = true">
           Claim Fees
         </Button>
@@ -335,24 +424,89 @@ const tokenName = computed(() => {
 
       <!-- Take Profit / Stop Loss -->
       <div class="space-y-2">
-        <Label>Take Profit / Stop Loss Prices</Label>
+        <Label
+          class="block"
+        >
+          Take Profit / Stop Loss Prices
+          <RadioGroupRoot
+            v-model="editPriceCurrency"
+            class="flex mt-2 gap-4.5 w-[100%]"
+            default-value="default"
+            aria-label="View density"
+          >
+            <div class="flex items-center">
+              <RadioGroupItem
+                id="c1"
+                class="bg-white w-[1.125rem] h-[1.125rem] rounded-full border data-[active=true]:border-stone-700 data-[active=true]:bg-stone-700 dark:data-[active=true]:bg-white shadow-sm focus:shadow-[0_0_0_2px] focus:shadow-stone-700 outline-none cursor-default"
+                value="sol"
+              >
+                <RadioGroupIndicator
+                  class="flex items-center justify-center w-full h-full relative after:content-[''] after:block after:w-2 after:h-2 after:rounded-[50%] after:bg-white dark:after:bg-stone-700"
+                />
+              </RadioGroupItem>
+              <label
+                class="text-stone-700 dark:text-white text-sm leading-none pl-[5px] flex items-center"
+                for="c1"
+              >
+                SOL
+              </label>
+            </div>
+            <div class="flex items-center">
+              <RadioGroupItem
+                id="c2"
+                class="bg-white w-[1.125rem] h-[1.125rem] rounded-full border data-[active=true]:border-stone-700 data-[active=true]:bg-stone-700 dark:data-[active=true]:bg-white shadow-sm focus:shadow-[0_0_0_2px] focus:shadow-stone-700 outline-none cursor-default"
+                value="usd"
+              >
+                <RadioGroupIndicator
+                  class="flex items-center justify-center w-full h-full relative after:content-[''] after:block after:w-2 after:h-2 after:rounded-[50%] after:bg-white dark:after:bg-stone-700"
+                />
+              </RadioGroupItem>
+              <label
+                class="text-stone-700 dark:text-white text-sm leading-none pl-[5px] flex items-center"
+                for="c2"
+              >
+                USD
+              </label>
+            </div>
+          </RadioGroupRoot>
+        </Label>
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
-            <Label class="text-sm">Take Profit Price</Label>
+            <Label class="text-sm block">
+              Take Profit Price
+            </Label>
+            <label for="a1" class="flex items-center align-center text-sm">
+              Out of Range
+              <Checkbox
+                id="a1"
+                v-model="editTakeProfitOutOfRange"
+                class="ml-2"
+              />
+            </label>
             <Input
               v-model="editTakeProfitPrice"
               type="number"
               step="0.01"
-              placeholder="0.00"
+              :disabled="editTakeProfitOutOfRange"
+              :placeholder="editPriceCurrency === 'usd' ? '$ 0.00' : '0.00'"
             />
           </div>
           <div class="space-y-2">
             <Label class="text-sm">Stop Loss Price</Label>
+            <label for="a2" class="flex items-center align-center text-sm">
+              Out of Range
+              <Checkbox
+                id="a2"
+                v-model="editStopLossOutOfRange"
+                class="ml-2"
+              />
+            </label>
             <Input
               v-model="editStopLossPrice"
               type="number"
               step="0.01"
-              placeholder="0.00"
+              :disabled="editStopLossOutOfRange"
+              :placeholder="editPriceCurrency === 'usd' ? '$ 0.00' : '0.00'"
             />
           </div>
         </div>
@@ -371,19 +525,67 @@ const tokenName = computed(() => {
 
         <div v-if="editAutoRebalance" class="ml-6 space-y-4 border-l-2 border-zinc-700 pl-4">
           <div class="space-y-2">
-            <Label>Rebalance Strategy</Label>
-            <Select v-model="editRebalanceStrategy">
-              <SelectTrigger>
-                <SelectValue placeholder="Select strategy" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="spot">SPOT</SelectItem>
-                  <SelectItem value="curve">CURVE</SelectItem>
-                  <SelectItem value="bidAsk">BIDASK</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <div class="flex items-start">
+              <div class="mr-5">
+                <label class="text-sm font-medium">Rebalance Strategy</label>
+                <Select v-model="editRebalanceStrategy">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select strategy" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="spot">SPOT</SelectItem>
+                      <SelectItem value="curve">CURVE</SelectItem>
+                      <SelectItem value="bidAsk">BIDASK</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label class="text-sm font-medium mb-5">Rebalance Type</label>
+                <RadioGroupRoot
+                  v-model="editRebalanceType"
+                  class="flex mt-2 gap-4.5"
+                  default-value="default"
+                  aria-label="View density"
+                >
+                  <div class="flex items-center">
+                    <RadioGroupItem
+                      id="r1"
+                      class="bg-white w-[1.125rem] h-[1.125rem] rounded-full border data-[active=true]:border-stone-700 data-[active=true]:bg-stone-700 dark:data-[active=true]:bg-white shadow-sm focus:shadow-[0_0_0_2px] focus:shadow-stone-700 outline-none cursor-default"
+                      value="standard"
+                    >
+                      <RadioGroupIndicator
+                        class="flex items-center justify-center w-full h-full relative after:content-[''] after:block after:w-2 after:h-2 after:rounded-[50%] after:bg-white dark:after:bg-stone-700"
+                      />
+                    </RadioGroupItem>
+                    <label
+                      class="text-stone-700 dark:text-white text-sm leading-none pl-[5px]"
+                      for="r1"
+                    >
+                      Standard(reopen)
+                    </label>
+                  </div>
+                  <div class="flex items-center">
+                    <RadioGroupItem
+                      id="r2"
+                      class="bg-white w-[1.125rem] h-[1.125rem] rounded-full border data-[active=true]:border-stone-700 data-[active=true]:bg-stone-700 dark:data-[active=true]:bg-white shadow-sm focus:shadow-[0_0_0_2px] focus:shadow-stone-700 outline-none cursor-default"
+                      value="simple"
+                    >
+                      <RadioGroupIndicator
+                        class="flex items-center justify-center w-full h-full relative after:content-[''] after:block after:w-2 after:h-2 after:rounded-[50%] after:bg-white dark:after:bg-stone-700"
+                      />
+                    </RadioGroupItem>
+                    <label
+                      class="text-stone-700 dark:text-white text-sm leading-none pl-[5px]"
+                      for="r2"
+                    >
+                      Simple(no swap)
+                    </label>
+                  </div>
+                </RadioGroupRoot>
+              </div>
+            </div>
           </div>
 
           <div class="grid grid-cols-2 gap-4">
@@ -479,7 +681,7 @@ const tokenName = computed(() => {
     </div>
 
     <!-- Manual Rebalance Modal -->
-    <div v-if="showRebalanceModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <!-- <div v-if="showRebalanceModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <Card class="w-full max-w-md !p-6">
         <CardHeader>
           <h3 class="text-lg font-semibold">Manual Rebalance</h3>
@@ -512,7 +714,7 @@ const tokenName = computed(() => {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </div> -->
 
     <!-- Claim Fees Modal -->
     <div v-if="showClaimFeesModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">

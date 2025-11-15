@@ -2,17 +2,17 @@
 import { computed } from 'vue';
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import type { Position } from '@/services/api';
 import { getColorFromString } from '@/lib/utils';
+import type { ListPositionsResponseDataItemsInner } from '@/api';
 
 interface Props {
-  position: Position;
+  position: ListPositionsResponseDataItemsInner;
   poolName?: string;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<{
-  click: [position: Position]
+  click: [position: ListPositionsResponseDataItemsInner]
 }>();
 
 // Format the position ID for display (shortened)
@@ -26,9 +26,9 @@ const strategyLabel = computed(() => {
 });
 
 // Determine if position has any configs
-const hasConfigs = computed(() => {
-  return !!(props.position.takeProfitConfig || props.position.rebalanceConfig || props.position.feesConfig);
-});
+// const hasConfigs = computed(() => {
+//   return !!(props.position.takeProfitConfig || props.position.rebalanceConfig || props.position.feesConfig);
+// });
 
 const borderColor = computed(() => {
   return getColorFromString(props.position.poolId);
@@ -76,7 +76,7 @@ function handleClick() {
       </div>
 
       <!-- Config indicators -->
-      <div v-if="hasConfigs" class="flex gap-1 pt-1">
+      <!-- <div v-if="hasConfigs" class="flex gap-1 pt-1">
         <span
           v-if="position.takeProfitConfig"
           class="px-2 py-0.5 text-xs bg-yellow-500/10 text-yellow-500 rounded border border-yellow-500/20"
@@ -95,7 +95,7 @@ function handleClick() {
         >
           Auto Fees
         </span>
-      </div>
+      </div> -->
     </CardContent>
   </Card>
 </template>
