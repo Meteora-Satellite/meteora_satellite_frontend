@@ -155,16 +155,16 @@ const createNewWallet = async () => {
   }
 }
 
-const test = async() => {
-  try {
-    const request = apiClient.openApi.push.pushTestPushNotificationPost({'pushTestNotificationBody': {
-      title: 'title',
-      'type': 'closePosition',
-    }})
-  } catch (err) {
-    console.log(err)
-  }
-}
+// const test = async() => {
+//   try {
+//     const request = apiClient.openApi.push.pushTestPushNotificationPost({'pushTestNotificationBody': {
+//       title: 'title',
+//       'type': 'closePosition',
+//     }})
+//   } catch (err) {
+//     console.log(err)
+//   }
+// }
 </script>
 <template>
   <NotificationsSidebar/>
@@ -174,7 +174,7 @@ const test = async() => {
     @update:open="(val:boolean) => showPrivateKeyModal = val"
   />
 
-  <div class="font-white" @click="test()">test</div>
+  <!-- <div class="font-white" @click="test()">test</div> -->
 
   <div class="header relative w-full px-4 py-4 lg:px-8">
     <!-- Mobile: Two rows (logo/wallet, then input) -->
