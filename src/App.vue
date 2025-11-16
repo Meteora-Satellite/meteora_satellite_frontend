@@ -6,8 +6,9 @@ import { Toaster } from '@/components/ui/sonner';
 
 import 'vue-sonner/style.css';
 
-import { onMounted, watch } from 'vue';
-import { messaging, getToken, onMessage } from '../firebase';
+import { onMounted, ref, watch } from 'vue';
+// import { messaging, getToken, onMessage, isSupported } from '../firebase';
+import { getFCMMessaging } from '../firebase';
 import { toast } from 'vue-sonner';
 import { useNotifications } from './composables/useNotifications';
 import Header from './components/Header.vue';
@@ -15,12 +16,15 @@ import { useAuthStore } from './stores/auth';
 import type { NotificationDTO } from './api';
 import { apiClient } from './services/api';
 import { useWSClientStore } from './stores/ws';
+import { getToken, onMessage } from 'firebase/messaging';
 
 const authStore = useAuthStore();
 const vapidKey = import.meta.env.VITE_FCM_VAPID_KEY;
 
 async function initFCM() {
   if (!authStore.isAuthenticated) return;
+  const messaging = await getFCMMessaging();
+  if (!messaging) return;
 
   try {
     const permission = await Notification.requestPermission();
@@ -75,6 +79,8 @@ watch(
     } else if (!newVal && oldVal) {
       const unregisterFCM = async () => {
         try {
+          const messaging = await getFCMMessaging();
+          if (!messaging) return;
           const token = await getToken(messaging, { vapidKey });
           await apiClient.openApi.push.pushUnregisterPost({
             pushUnregisterBody: { token }

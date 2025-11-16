@@ -14,7 +14,7 @@ export const useWSClientStore = defineStore('wsClient', () => {
 
     const initWSClient = () => {
         if (!auth.isAuthenticated || wsClient.value) return;
-        wsClient.value = new WSClient(localStorage.getItem('access_token') || '');
+        wsClient.value = new WSClient();
         wsClient.value.connect()
     }
     watch(

@@ -154,6 +154,17 @@ const createNewWallet = async () => {
     toast.error('Unexpected error, try again later.')
   }
 }
+
+const test = async() => {
+  try {
+    const request = apiClient.openApi.push.pushTestPushNotificationPost({'pushTestNotificationBody': {
+      title: 'title',
+      'type': 'closePosition',
+    }})
+  } catch (err) {
+    console.log(err)
+  }
+}
 </script>
 <template>
   <NotificationsSidebar/>
@@ -162,6 +173,8 @@ const createNewWallet = async () => {
     :open="true"
     @update:open="(val:boolean) => showPrivateKeyModal = val"
   />
+
+  <div class="font-white" @click="test()">test</div>
 
   <div class="header relative w-full px-4 py-4 lg:px-8">
     <!-- Mobile: Two rows (logo/wallet, then input) -->

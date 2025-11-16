@@ -16,17 +16,17 @@ WS_BASE_URL = WS_BASE_URL.replace('/api', '');
 export class WSClient {
   private ws: WebSocket | null = null;
   private url: string = WS_BASE_URL;
-  private token: string;
   private reconnectInterval = 10000;
   private listeners: EventCallback[] = [];
   private positionCallbacks: Record<string, (data: PositionOnchainDataSchema) => void> = {};
 
-  constructor(token: string) {
-    this.token = token;
+  constructor() {
   }
 
   connect() {
-    const wsUrl = `${this.url}/ws?token=${this.token}`;
+    const token = localStorage.getItem('access_token')
+    if (!token) throw new Error('No token');
+    const wsUrl = `${this.url}/ws?token=${token}`;
     this.ws = new WebSocket(wsUrl);
 
     this.ws.onopen = () => {
