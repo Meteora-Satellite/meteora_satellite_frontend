@@ -25,6 +25,10 @@ jobs:
         run: npm run api:generate-dev
 
       - name: Build project
+        env:
+          VITE_API_URL: ${{ secrets.DEV_VITE_API_URL }}
+          VITE_WS_URL: ${{ secrets.DEV_VITE_WS_URL }}
+          VITE_FCM_VAPID_KEY: ${{ secrets.DEV_VITE_FCM_VAPID_KEY }}
         run: npm run build:dev
 
       - name: Deploy to Dev Server
