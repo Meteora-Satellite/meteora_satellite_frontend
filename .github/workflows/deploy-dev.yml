@@ -1,0 +1,69 @@
+name: Deploy to Dev
+
+on:
+  push:
+    branches: [dev]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Build project
+        run: npm run build:dev
+
+      - name: Deploy to Dev Server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: ${{ secrets.DEV_SERVER_USER }}
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: "dist/*"
+          target: "/tmp/mtsat-frontend-deploy"
+          strip_components: 1
+
+      - name: Deploy and backup on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: ${{ secrets.DEV_SERVER_USER }}
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          script: |
+            set -e
+            NGINX_DIR=/var/www/mtsat-frontend
+            BACKUP_DIR=/var/www/mtsat-frontend_backups
+            TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+            TEMP_DIR=/tmp/mtsat-frontend-deploy
+            
+            echo "💾 Creating backup..."
+            sudo mkdir -p $BACKUP_DIR
+            if [ -d "$NGINX_DIR" ]; then
+              sudo mkdir -p $BACKUP_DIR/$TIMESTAMP
+              sudo cp -r $NGINX_DIR/* $BACKUP_DIR/$TIMESTAMP/
+              echo "✅ Backup created at $BACKUP_DIR/$TIMESTAMP"
+            fi
+            
+            echo "📂 Deploying new build..."
+            sudo mkdir -p $NGINX_DIR
+            sudo rm -rf $NGINX_DIR/*
+            sudo cp -r $TEMP_DIR/* $NGINX_DIR/
+            
+            echo "🧹 Cleaning up old backups (keeping 5)..."
+            sudo ls -1dt $BACKUP_DIR/* | tail -n +6 | xargs -r sudo rm -rf
+            
+            echo "🗑️ Cleaning temp files..."
+            rm -rf $TEMP_DIR
+            
+            echo "✅ Deployment complete!"
