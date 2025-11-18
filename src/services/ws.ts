@@ -4,13 +4,7 @@ import { usePoolsStore } from "@/stores/pools";
 import { usePositionsStore } from "@/stores/positions";
 
 type EventCallback = (event: WsServerEvent) => void;
-let WS_BASE_URL = import.meta.env.DEV ? import.meta.env.VITE_DEV_API_URL : import.meta.env.VITE_API_URL || 'https://mtsat.xyz';
-if (WS_BASE_URL.startsWith('https://')) {
-  WS_BASE_URL = WS_BASE_URL.replace('https://', 'wss://');
-} else if (WS_BASE_URL.startsWith('http://')) {
-  WS_BASE_URL = WS_BASE_URL.replace('http://', 'ws://');
-}
-WS_BASE_URL = WS_BASE_URL.replace('/api', '');
+const WS_BASE_URL = import.meta.env.DEV ? import.meta.env.VITE_DEV_WS_URL : import.meta.env.VITE_WS_URL || 'https://mtsat.xyz';
 
 
 export class WSClient {
