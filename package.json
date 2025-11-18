@@ -16,7 +16,7 @@
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",
     "api:generate-prod": "openapi-generator-cli generate -i https://api.mtsat.xyz/openapi.json -g typescript-fetch -o src/api --skip-validate-spec",
-    "api:generate-dev": "openapi-generator-cli generate -i http://75.119.139.193:3000/openapi.json -g typescript-fetch -o src/api --skip-validate-spec"
+    "api:generate-dev": "openapi-generator-cli generate -i https://api.etilletaspl-ved.com/openapi.json -g typescript-fetch -o src/api --skip-validate-spec"
   },
   "dependencies": {
     "@solana/wallet-adapter-base": "^0.9.27",
