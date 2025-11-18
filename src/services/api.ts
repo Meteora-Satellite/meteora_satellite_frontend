@@ -10,7 +10,7 @@ import { WalletsApi } from '@/api/apis/WalletsApi'
 import { NotificationsApi } from '@/api/apis/NotificationsApi'
 import { PushApi, type PositionDTO } from '@/api';
 
-export const API_BASE_URL = import.meta.env.DEV ? import.meta.env.VITE_DEV_API_URL : import.meta.env.VITE_API_URL || 'https://mtsat.xyz';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://mtsat.xyz';
 
 // Auth Types
 // export interface NonceRequest {

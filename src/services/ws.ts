@@ -4,7 +4,7 @@ import { usePoolsStore } from "@/stores/pools";
 import { usePositionsStore } from "@/stores/positions";
 
 type EventCallback = (event: WsServerEvent) => void;
-const WS_BASE_URL = import.meta.env.DEV ? import.meta.env.VITE_DEV_WS_URL : import.meta.env.VITE_WS_URL || 'https://mtsat.xyz';
+const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'https://mtsat.xyz';
 
 
 export class WSClient {
