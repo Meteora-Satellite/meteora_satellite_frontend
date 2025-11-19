@@ -29,7 +29,7 @@ jobs:
           VITE_API_URL: ${{ secrets.PROD_VITE_API_URL }}
           VITE_WS_URL: ${{ secrets.PROD_VITE_WS_URL }}
           VITE_FCM_VAPID_KEY: ${{ secrets.PROD_VITE_FCM_VAPID_KEY }}
-        run: npm run build:prod
+        run: npm run build
 
       - name: Deploy to Prod Server
         uses: appleboy/scp-action@v0.1.7
